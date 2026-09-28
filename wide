@@ -1,0 +1,99 @@
+
+import numpy as np
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+import tensorflow
+from tensorflow import keras
+from tensorflow.keras import layers,models,Model
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense,Input,Concatenate
+
+from sklearn.preprocessing import LabelEncoder
+
+df = pd.read_csv("/content/diamonds.csv")
+df
+
+df = df.dropna()
+
+cat_col = df.select_dtypes(include="object").columns
+print(cat_col)
+
+le = LabelEncoder()
+df["cut"] = le.fit_transform(df["cut"])
+df["clarity"] = le.fit_transform(df["clarity"])
+df["color"] = le.fit_transform(df["color"])
+
+
+
+x = df.drop('price',axis=1)
+y = df['price']
+
+
+X_train,x_test,Y_train,y_test = train_test_split(x,y)
+
+x_train,x_valid,y_train,y_valid= train_test_split(X_train,Y_train)
+
+
+
+Deep_Feature = ['carat', 'depth', 'table', 'x', 'y', 'z']
+Wide_Feature = ['cut', 'color', 'clarity']
+
+sc = StandardScaler()
+
+x_train_s = pd.DataFrame(
+    sc.fit_transform(x_train[Deep_Feature]),
+    columns=Deep_Feature
+)
+
+x_valid_s = pd.DataFrame(
+    sc.transform(x_valid[Deep_Feature]),
+    columns=Deep_Feature
+)
+
+x_test_s = pd.DataFrame(
+    sc.transform(x_test[Deep_Feature]),
+    columns=Deep_Feature
+)
+
+A_TRAIN = x_train[Wide_Feature].values.astype("float32")
+A_VALID = x_valid[Wide_Feature].values.astype("float32")
+A_TEST = x_test[Wide_Feature].values.astype("float32")
+
+B_TRAIN = x_train_s[Deep_Feature].values.astype("float32")
+B_VALID = x_valid_s[Deep_Feature].values.astype("float32")
+B_TEST = x_test_s[Deep_Feature].values.astype("float32")
+
+Input_A = Input(shape=A_TRAIN.shape[1:])
+Input_B =Input(shape=B_TRAIN.shape[1:])
+
+hidden1 = Dense(30,activation="relu")(Input_B)
+hidden2 = Dense(20,activation="relu")(hidden1)
+
+concat = Concatenate()([Input_A,hidden2])
+
+aux =Dense(1)(hidden2)
+
+out = Dense(1)(concat)
+
+model = Model(inputs=[Input_A,Input_B],outputs=[out,aux])
+
+model.compile(
+    loss="mse",
+    optimizer="adam"
+)
+
+model.summary()
+
+history = model.fit(
+    [A_TRAIN,B_TRAIN],
+    [y_train,y_train],
+    epochs=10,
+    validation_data=([A_VALID,B_VALID],
+    [y_valid,y_valid])
+)
+
+tloss,mainloss,auxloss = model.evaluate([A_TEST,B_TEST],[y_test,y_test])
+
+y_pred = model.predict([A_TEST,B_TEST],verbose=0)
+y_pred
