@@ -1,0 +1,240 @@
+# ============================================================
+# CNN PRACTICAL - CIFAR-10
+# ============================================================
+
+import numpy as np
+import matplotlib.pyplot as plt
+import tensorflow as tf
+
+from tensorflow.keras.datasets import cifar10
+
+from tensorflow.keras.models import Sequential
+
+from tensorflow.keras.layers import (
+    Conv2D,
+    BatchNormalization,
+    Activation,
+    MaxPooling2D,
+    Dropout,
+    Flatten,
+    Dense
+)
+
+from tensorflow.keras.callbacks import EarlyStopping
+
+from sklearn.model_selection import train_test_split
+
+
+# ============================================================
+# 1. LOAD CIFAR-10 DATASET
+# ============================================================
+
+(x_train, y_train), (x_test, y_test) = cifar10.load_data()
+
+print("x_train:", x_train.shape)
+print("y_train:", y_train.shape)
+print("x_test:", x_test.shape)
+print("y_test:", y_test.shape)
+
+
+# ============================================================
+# 2. NORMALIZE
+# ============================================================
+
+x_train = x_train.astype("float32") / 255.0
+x_test = x_test.astype("float32") / 255.0
+
+
+# ============================================================
+# 3. TRAIN / VALIDATION SPLIT
+# ============================================================
+
+x_train, x_valid, y_train, y_valid = train_test_split(
+    x_train,
+    y_train,
+    test_size=0.2,
+    random_state=12345
+)
+
+print("Training:", x_train.shape)
+print("Validation:", x_valid.shape)
+print("Testing:", x_test.shape)
+
+
+# ============================================================
+# 4. CREATE CNN MODEL
+# ============================================================
+
+model = Sequential([
+
+    # Block 1
+    Conv2D(
+        64,
+        (3, 3),
+        padding="same",
+        input_shape=(32, 32, 3)
+    ),
+    BatchNormalization(),
+    Activation("relu"),
+    MaxPooling2D(2),
+    Dropout(0.3),
+
+    # Block 2
+    Conv2D(
+        128,
+        (3, 3),
+        padding="same"
+    ),
+    BatchNormalization(),
+    Activation("relu"),
+    MaxPooling2D(2),
+    Dropout(0.3),
+
+    # Block 3
+    Conv2D(
+        256,
+        (3, 3),
+        padding="same"
+    ),
+    BatchNormalization(),
+    Activation("relu"),
+    MaxPooling2D(2),
+    Dropout(0.4),
+
+    # Convert feature maps to vector
+    Flatten(),
+
+    # Fully connected layer
+    Dense(512),
+    BatchNormalization(),
+    Activation("relu"),
+    Dropout(0.5),
+
+    # CIFAR-10 has 10 classes
+    Dense(10, activation="softmax")
+])
+
+
+# ============================================================
+# 5. MODEL SUMMARY
+# ============================================================
+
+model.summary()
+
+
+# ============================================================
+# 6. COMPILE
+# ============================================================
+
+model.compile(
+    optimizer="adam",
+    loss="sparse_categorical_crossentropy",
+    metrics=["accuracy"]
+)
+
+
+# ============================================================
+# 7. EARLY STOPPING
+# ============================================================
+
+early_stopping = EarlyStopping(
+    monitor="val_loss",
+    patience=10,
+    restore_best_weights=True
+)
+
+
+# ============================================================
+# 8. TRAIN
+# ============================================================
+
+history = model.fit(
+    x_train,
+    y_train,
+    batch_size=128,
+    epochs=10,
+    validation_data=(x_valid, y_valid),
+    callbacks=[early_stopping],
+    verbose=1
+)
+
+
+# ============================================================
+# 9. EVALUATE
+# ============================================================
+
+test_loss, test_accuracy = model.evaluate(
+    x_test,
+    y_test,
+    verbose=0
+)
+
+print("Test Loss:", test_loss)
+print("Test Accuracy:", test_accuracy)
+
+
+# ============================================================
+# 10. PREDICTION
+# ============================================================
+
+predictions = model.predict(x_test)
+
+predicted_labels = np.argmax(
+    predictions,
+    axis=1
+)
+
+# y_test has shape (10000, 1)
+actual_labels = y_test.flatten()
+
+print("Predicted:", predicted_labels[:10])
+print("Actual:   ", actual_labels[:10])
+
+
+# ============================================================
+# 11. CIFAR-10 CLASS NAMES
+# ============================================================
+
+classes = [
+    "airplane",
+    "automobile",
+    "bird",
+    "cat",
+    "deer",
+    "dog",
+    "frog",
+    "horse",
+    "ship",
+    "truck"
+]
+
+
+# ============================================================
+# 12. DISPLAY ACTUAL VS PREDICTED
+# ============================================================
+
+plt.figure(figsize=(15, 6))
+
+for i in range(10):
+
+    index = np.random.randint(
+        0,
+        len(x_test)
+    )
+
+    plt.subplot(2, 5, i + 1)
+
+    plt.imshow(x_test[index])
+
+    actual = actual_labels[index]
+    predicted = predicted_labels[index]
+
+    plt.title(
+        f"Actual: {classes[actual]}\n"
+        f"Predicted: {classes[predicted]}"
+    )
+
+    plt.axis("off")
+
+plt.tight_layout()
+plt.show()
