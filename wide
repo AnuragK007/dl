@@ -1,99 +1,193 @@
-
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-import tensorflow
-from tensorflow import keras
-from tensorflow.keras import layers,models,Model
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense,Input,Concatenate
 
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.model_selection import train_test_split
+
+import tensorflow as tf
+from tensorflow.keras import Model
+from tensorflow.keras.layers import Input, Dense, Concatenate
+
+
+# ============================================================
+# 1. LOAD DATA
+# ============================================================
 
 df = pd.read_csv("/content/diamonds.csv")
-df
 
 df = df.dropna()
 
-cat_col = df.select_dtypes(include="object").columns
-print(cat_col)
+print(df.head())
+
+
+# ============================================================
+# 2. ENCODE CATEGORICAL FEATURES
+# ============================================================
 
 le = LabelEncoder()
+
 df["cut"] = le.fit_transform(df["cut"])
-df["clarity"] = le.fit_transform(df["clarity"])
 df["color"] = le.fit_transform(df["color"])
+df["clarity"] = le.fit_transform(df["clarity"])
 
 
+# ============================================================
+# 3. SEPARATE X AND Y
+# ============================================================
 
-x = df.drop('price',axis=1)
-y = df['price']
-
-
-X_train,x_test,Y_train,y_test = train_test_split(x,y)
-
-x_train,x_valid,y_train,y_valid= train_test_split(X_train,Y_train)
+X = df.drop("price", axis=1)
+y = df["price"]
 
 
+# ============================================================
+# 4. TRAIN / TEST / VALIDATION SPLIT
+# ============================================================
 
-Deep_Feature = ['carat', 'depth', 'table', 'x', 'y', 'z']
-Wide_Feature = ['cut', 'color', 'clarity']
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+x_train, x_valid, y_train, y_valid = train_test_split(
+    X_train, y_train, test_size=0.2, random_state=42
+)
+
+
+# ============================================================
+# 5. DEFINE WIDE AND DEEP FEATURES
+# ============================================================
+
+Wide_Feature = ["cut", "color", "clarity"]
+
+Deep_Feature = [
+    "carat",
+    "depth",
+    "table",
+    "x",
+    "y",
+    "z"
+]
+
+
+# ============================================================
+# 6. SCALE DEEP FEATURES
+# ============================================================
 
 sc = StandardScaler()
 
-x_train_s = pd.DataFrame(
-    sc.fit_transform(x_train[Deep_Feature]),
-    columns=Deep_Feature
-)
+x_train_s = sc.fit_transform(x_train[Deep_Feature])
+x_valid_s = sc.transform(x_valid[Deep_Feature])
+x_test_s = sc.transform(x_test[Deep_Feature])
 
-x_valid_s = pd.DataFrame(
-    sc.transform(x_valid[Deep_Feature]),
-    columns=Deep_Feature
-)
 
-x_test_s = pd.DataFrame(
-    sc.transform(x_test[Deep_Feature]),
-    columns=Deep_Feature
-)
+# ============================================================
+# 7. PREPARE WIDE INPUT
+# ============================================================
 
 A_TRAIN = x_train[Wide_Feature].values.astype("float32")
 A_VALID = x_valid[Wide_Feature].values.astype("float32")
 A_TEST = x_test[Wide_Feature].values.astype("float32")
 
-B_TRAIN = x_train_s[Deep_Feature].values.astype("float32")
-B_VALID = x_valid_s[Deep_Feature].values.astype("float32")
-B_TEST = x_test_s[Deep_Feature].values.astype("float32")
+
+# ============================================================
+# 8. PREPARE DEEP INPUT
+# ============================================================
+
+B_TRAIN = x_train_s.astype("float32")
+B_VALID = x_valid_s.astype("float32")
+B_TEST = x_test_s.astype("float32")
+
+
+# ============================================================
+# 9. CREATE INPUTS
+# ============================================================
 
 Input_A = Input(shape=A_TRAIN.shape[1:])
-Input_B =Input(shape=B_TRAIN.shape[1:])
+Input_B = Input(shape=B_TRAIN.shape[1:])
 
-hidden1 = Dense(30,activation="relu")(Input_B)
-hidden2 = Dense(20,activation="relu")(hidden1)
 
-concat = Concatenate()([Input_A,hidden2])
+# ============================================================
+# 10. DEEP NETWORK
+# ============================================================
 
-aux =Dense(1)(hidden2)
+hidden1 = Dense(30, activation="relu")(Input_B)
 
-out = Dense(1)(concat)
+hidden2 = Dense(20, activation="relu")(hidden1)
 
-model = Model(inputs=[Input_A,Input_B],outputs=[out,aux])
+
+# ============================================================
+# 11. COMBINE WIDE + DEEP
+# ============================================================
+
+concat = Concatenate()([Input_A, hidden2])
+
+
+# ============================================================
+# 12. FINAL OUTPUT
+# ============================================================
+
+output = Dense(1)(concat)
+
+
+# ============================================================
+# 13. CREATE MODEL
+# ============================================================
+
+model = Model(
+    inputs=[Input_A, Input_B],
+    outputs=output
+)
+
+
+# ============================================================
+# 14. COMPILE
+# ============================================================
 
 model.compile(
+    optimizer="adam",
     loss="mse",
-    optimizer="adam"
+    metrics=["mae"]
 )
+
+
+# ============================================================
+# 15. SUMMARY
+# ============================================================
 
 model.summary()
 
+
+# ============================================================
+# 16. TRAIN
+# ============================================================
+
 history = model.fit(
-    [A_TRAIN,B_TRAIN],
-    [y_train,y_train],
+    [A_TRAIN, B_TRAIN],
+    y_train,
     epochs=10,
-    validation_data=([A_VALID,B_VALID],
-    [y_valid,y_valid])
+    batch_size=32,
+    validation_data=([A_VALID, B_VALID], y_valid)
 )
 
-tloss,mainloss,auxloss = model.evaluate([A_TEST,B_TEST],[y_test,y_test])
 
-y_pred = model.predict([A_TEST,B_TEST],verbose=0)
-y_pred
+# ============================================================
+# 17. EVALUATE
+# ============================================================
+
+loss, mae = model.evaluate(
+    [A_TEST, B_TEST],
+    y_test
+)
+
+print("Test Loss:", loss)
+print("Test MAE:", mae)
+
+
+# ============================================================
+# 18. PREDICTION
+# ============================================================
+
+y_pred = model.predict(
+    [A_TEST, B_TEST]
+)
+
+print(y_pred[:10])
