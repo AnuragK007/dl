@@ -1,0 +1,531 @@
+# ============================================================
+# CNN PRACTICAL - FASHION MNIST
+# ============================================================
+
+import numpy as np
+import tensorflow as tf
+import matplotlib.pyplot as plt
+
+from tensorflow.keras.datasets import fashion_mnist
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import (
+    Conv2D,
+    BatchNormalization,
+    Activation,
+    MaxPooling2D,
+    Dropout,
+    Flatten,
+    Dense
+)
+from tensorflow.keras.callbacks import EarlyStopping
+
+from sklearn.model_selection import train_test_split
+
+
+# ============================================================
+# 1. LOAD FASHION MNIST DATASET
+# ============================================================
+
+(x_train, y_train), (x_test, y_test) = fashion_mnist.load_data()
+
+print("x_train shape:", x_train.shape)
+print("y_train shape:", y_train.shape)
+print("x_test shape:", x_test.shape)
+print("y_test shape:", y_test.shape)
+
+
+# ============================================================
+# 2. RESHAPE DATA
+# ============================================================
+
+# Fashion-MNIST images are 28x28 grayscale
+# CNN expects: height, width, channels
+
+x_train = x_train.reshape(-1, 28, 28, 1)
+x_test = x_test.reshape(-1, 28, 28, 1)
+
+print("After reshape:")
+print("x_train shape:", x_train.shape)
+print("x_test shape:", x_test.shape)
+
+
+# ============================================================
+# 3. NORMALIZE PIXEL VALUES
+# ============================================================
+
+x_train = x_train.astype("float32") / 255.0
+x_test = x_test.astype("float32") / 255.0
+
+
+# ============================================================
+# 4. TRAIN-VALIDATION SPLIT
+# ============================================================
+
+x_train, x_validate, y_train, y_validate = train_test_split(
+    x_train,
+    y_train,
+    test_size=0.2,
+    random_state=12345
+)
+
+print("Training shape:", x_train.shape)
+print("Validation shape:", x_validate.shape)
+print("Test shape:", x_test.shape)
+
+
+# ============================================================
+# 5. CREATE CNN MODEL
+# ============================================================
+
+tf.keras.backend.clear_session()
+
+model = Sequential()
+
+
+# -------------------------
+# Convolutional Block 1
+# -------------------------
+
+model.add(
+    Conv2D(
+        64,
+        (3, 3),
+        padding="same",
+        input_shape=(28, 28, 1)
+    )
+)
+
+model.add(BatchNormalization())
+model.add(Activation("relu"))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Dropout(0.3))
+
+
+# -------------------------
+# Convolutional Block 2
+# -------------------------
+
+model.add(
+    Conv2D(
+        128,
+        (3, 3),
+        padding="same"
+    )
+)
+
+model.add(BatchNormalization())
+model.add(Activation("relu"))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Dropout(0.3))
+
+
+# -------------------------
+# Convolutional Block 3
+# -------------------------
+
+model.add(
+    Conv2D(
+        256,
+        (3, 3),
+        padding="same"
+    )
+)
+
+model.add(BatchNormalization())
+model.add(Activation("relu"))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Dropout(0.4))
+
+
+# ============================================================
+# 6. FULLY CONNECTED LAYERS
+# ============================================================
+
+model.add(Flatten())
+
+model.add(Dense(512))
+model.add(BatchNormalization())
+model.add(Activation("relu"))
+model.add(Dropout(0.5))
+
+
+# ============================================================
+# 7. OUTPUT LAYER
+# ============================================================
+
+# Fashion-MNIST has 10 classes
+
+model.add(
+    Dense(
+        10,
+        activation="softmax"
+    )
+)
+
+
+# ============================================================
+# 8. MODEL SUMMARY
+# ============================================================
+
+model.summary()
+
+
+# ============================================================
+# 9. COMPILE MODEL
+# ============================================================
+
+model.compile(
+    loss="sparse_categorical_crossentropy",
+    optimizer="adam",
+    metrics=["accuracy"]
+)
+
+
+# ============================================================
+# 10. EARLY STOPPING
+# ============================================================
+
+early_stopping = EarlyStopping(
+    monitor="val_loss",
+    patience=10,
+    restore_best_weights=True
+)
+
+
+# ============================================================
+# 11. TRAIN MODEL
+# ============================================================
+
+history = model.fit(
+    x_train,
+    y_train,
+    batch_size=128,
+    epochs=10,
+    validation_data=(x_validate, y_validate),
+    callbacks=[early_stopping],
+    verbose=1
+)
+
+
+# ============================================================
+# 12. EVALUATE MODEL
+# ============================================================
+
+test_loss, test_accuracy = model.evaluate(
+    x_test,
+    y_test,
+    verbose=0
+)
+
+print("Test Loss:", test_loss)
+print("Test Accuracy:", test_accuracy)
+
+
+# ============================================================
+# 13. PREDICTIONS
+# ============================================================
+
+predictions = model.predict(x_test)
+
+predicted_labels = np.argmax(
+    predictions,
+    axis=1
+)
+
+print("Predicted labels:")
+print(predicted_labels[:10])
+
+print("Actual labels:")
+print(y_test[:10])
+
+
+# ============================================================
+# 14. FASHION-MNIST CLASS NAMES
+# ============================================================
+
+fashion_labels = {
+    0: "T-shirt/top",
+    1: "Trouser",
+    2: "Pullover",
+    3: "Dress",
+    4: "Coat",
+    5: "Sandal",
+    6: "Shirt",
+    7: "Sneaker",
+    8: "Bag",
+    9: "Ankle boot"
+}
+
+
+# ============================================================
+# 15. DISPLAY ACTUAL VS PREDICTED
+# ============================================================
+
+plt.figure(figsize=(15, 6))
+
+for i in range(10):
+
+    index = np.random.randint(
+        0,
+        len(x_test)
+    )
+
+    plt.subplot(2, 5, i + 1)
+
+    # Remove channel dimension for displaying image
+    plt.imshow(
+        x_test[index].squeeze(),
+        cmap="gray"
+    )
+
+    actual = y_test[index]
+    predicted = predicted_labels[index]
+
+    plt.title(
+        f"Actual: {fashion_labels[actual]}\n"
+        f"Predicted: {fashion_labels[predicted]}"
+    )
+
+    plt.axis("off")
+
+plt.tight_layout()
+plt.show()
+—-----------------------------------------------------
+# ============================================================
+# CNN PRACTICAL - MNIST
+# ============================================================
+
+import numpy as np
+import matplotlib.pyplot as plt
+import tensorflow as tf
+
+from tensorflow.keras.datasets import mnist
+
+from tensorflow.keras.models import Sequential
+
+from tensorflow.keras.layers import (
+    Conv2D,
+    BatchNormalization,
+    Activation,
+    MaxPooling2D,
+    Dropout,
+    Flatten,
+    Dense
+)
+
+from tensorflow.keras.callbacks import EarlyStopping
+
+from sklearn.model_selection import train_test_split
+
+
+# ============================================================
+# 1. LOAD MNIST DATASET
+# ============================================================
+
+(x_train, y_train), (x_test, y_test) = mnist.load_data()
+
+print("x_train:", x_train.shape)
+print("y_train:", y_train.shape)
+print("x_test:", x_test.shape)
+print("y_test:", y_test.shape)
+
+
+# ============================================================
+# 2. RESHAPE
+# ============================================================
+
+# MNIST images = 28 x 28 grayscale
+# CNN requires: height x width x channels
+
+x_train = x_train.reshape(-1, 28, 28, 1)
+x_test = x_test.reshape(-1, 28, 28, 1)
+
+print("After reshape:")
+print("x_train:", x_train.shape)
+print("x_test:", x_test.shape)
+
+
+# ============================================================
+# 3. NORMALIZE
+# ============================================================
+
+x_train = x_train.astype("float32") / 255.0
+x_test = x_test.astype("float32") / 255.0
+
+
+# ============================================================
+# 4. TRAIN / VALIDATION SPLIT
+# ============================================================
+
+x_train, x_valid, y_train, y_valid = train_test_split(
+    x_train,
+    y_train,
+    test_size=0.2,
+    random_state=12345
+)
+
+print("Training:", x_train.shape)
+print("Validation:", x_valid.shape)
+print("Testing:", x_test.shape)
+
+
+# ============================================================
+# 5. CREATE CNN MODEL
+# ============================================================
+
+model = Sequential([
+
+    # Block 1
+    Conv2D(
+        64,
+        (3, 3),
+        padding="same",
+        input_shape=(28, 28, 1)
+    ),
+    BatchNormalization(),
+    Activation("relu"),
+    MaxPooling2D(2),
+    Dropout(0.3),
+
+    # Block 2
+    Conv2D(
+        128,
+        (3, 3),
+        padding="same"
+    ),
+    BatchNormalization(),
+    Activation("relu"),
+    MaxPooling2D(2),
+    Dropout(0.3),
+
+    # Block 3
+    Conv2D(
+        256,
+        (3, 3),
+        padding="same"
+    ),
+    BatchNormalization(),
+    Activation("relu"),
+    MaxPooling2D(2),
+    Dropout(0.4),
+
+    # Convert feature maps to vector
+    Flatten(),
+
+    # Fully connected layer
+    Dense(512),
+    BatchNormalization(),
+    Activation("relu"),
+    Dropout(0.5),
+
+    # Output - digits 0 to 9
+    Dense(10, activation="softmax")
+])
+
+
+# ============================================================
+# 6. MODEL SUMMARY
+# ============================================================
+
+model.summary()
+
+
+# ============================================================
+# 7. COMPILE
+# ============================================================
+
+model.compile(
+    optimizer="adam",
+    loss="sparse_categorical_crossentropy",
+    metrics=["accuracy"]
+)
+
+
+# ============================================================
+# 8. EARLY STOPPING
+# ============================================================
+
+early_stopping = EarlyStopping(
+    monitor="val_loss",
+    patience=10,
+    restore_best_weights=True
+)
+
+
+# ============================================================
+# 9. TRAIN
+# ============================================================
+
+history = model.fit(
+    x_train,
+    y_train,
+    batch_size=128,
+    epochs=10,
+    validation_data=(x_valid, y_valid),
+    callbacks=[early_stopping],
+    verbose=1
+)
+
+
+# ============================================================
+# 10. EVALUATE
+# ============================================================
+
+test_loss, test_accuracy = model.evaluate(
+    x_test,
+    y_test,
+    verbose=0
+)
+
+print("Test Loss:", test_loss)
+print("Test Accuracy:", test_accuracy)
+
+
+# ============================================================
+# 11. PREDICTION
+# ============================================================
+
+predictions = model.predict(x_test)
+
+predicted_labels = np.argmax(
+    predictions,
+    axis=1
+)
+
+print("Predicted:", predicted_labels[:10])
+print("Actual:   ", y_test[:10])
+
+
+# ============================================================
+# 12. DISPLAY ACTUAL VS PREDICTED
+# ============================================================
+
+plt.figure(figsize=(15, 6))
+
+for i in range(10):
+
+    index = np.random.randint(
+        0,
+        len(x_test)
+    )
+
+    plt.subplot(2, 5, i + 1)
+
+    plt.imshow(
+        x_test[index].squeeze(),
+        cmap="gray"
+    )
+
+    actual = y_test[index]
+    predicted = predicted_labels[index]
+
+    plt.title(
+        f"Actual: {actual}\n"
+        f"Predicted: {predicted}"
+    )
+
+    plt.axis("off")
+
+plt.tight_layout()
+plt.show()
+—--------------------------------------------------------------
