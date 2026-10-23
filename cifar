@@ -1,6 +1,5 @@
-# ============================================================
+
 # CNN PRACTICAL - CIFAR-10
-# ============================================================
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -24,10 +23,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 
 from sklearn.model_selection import train_test_split
 
-
-# ============================================================
 # 1. LOAD CIFAR-10 DATASET
-# ============================================================
 
 (x_train, y_train), (x_test, y_test) = cifar10.load_data()
 
@@ -36,19 +32,13 @@ print("y_train:", y_train.shape)
 print("x_test:", x_test.shape)
 print("y_test:", y_test.shape)
 
-
-# ============================================================
 # 2. NORMALIZE
-# ============================================================
 
 x_train = x_train.astype("float32") / 255.0
 x_test = x_test.astype("float32") / 255.0
 
 
-# ============================================================
 # 3. TRAIN / VALIDATION SPLIT
-# ============================================================
-
 x_train, x_valid, y_train, y_valid = train_test_split(
     x_train,
     y_train,
@@ -60,10 +50,7 @@ print("Training:", x_train.shape)
 print("Validation:", x_valid.shape)
 print("Testing:", x_test.shape)
 
-
-# ============================================================
 # 4. CREATE CNN MODEL
-# ============================================================
 
 model = Sequential([
 
@@ -115,16 +102,10 @@ model = Sequential([
 ])
 
 
-# ============================================================
-# 5. MODEL SUMMARY
-# ============================================================
 
 model.summary()
 
 
-# ============================================================
-# 6. COMPILE
-# ============================================================
 
 model.compile(
     optimizer="adam",
@@ -133,9 +114,6 @@ model.compile(
 )
 
 
-# ============================================================
-# 7. EARLY STOPPING
-# ============================================================
 
 early_stopping = EarlyStopping(
     monitor="val_loss",
@@ -144,9 +122,6 @@ early_stopping = EarlyStopping(
 )
 
 
-# ============================================================
-# 8. TRAIN
-# ============================================================
 
 history = model.fit(
     x_train,
@@ -159,9 +134,6 @@ history = model.fit(
 )
 
 
-# ============================================================
-# 9. EVALUATE
-# ============================================================
 
 test_loss, test_accuracy = model.evaluate(
     x_test,
@@ -173,9 +145,6 @@ print("Test Loss:", test_loss)
 print("Test Accuracy:", test_accuracy)
 
 
-# ============================================================
-# 10. PREDICTION
-# ============================================================
 
 predictions = model.predict(x_test)
 
@@ -191,9 +160,6 @@ print("Predicted:", predicted_labels[:10])
 print("Actual:   ", actual_labels[:10])
 
 
-# ============================================================
-# 11. CIFAR-10 CLASS NAMES
-# ============================================================
 
 classes = [
     "airplane",
@@ -208,10 +174,8 @@ classes = [
     "truck"
 ]
 
-
-# ============================================================
 # 12. DISPLAY ACTUAL VS PREDICTED
-# ============================================================
+
 
 plt.figure(figsize=(15, 6))
 
