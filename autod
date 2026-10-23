@@ -1,0 +1,54 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from tensorflow.keras.datasets import fashion_mnist
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Input, Dense, Dropout
+
+(x_train, _), (x_test, _) = fashion_mnist.load_data()
+
+x_train = x_train.reshape(-1, 784) / 255.0
+x_test = x_test.reshape(-1, 784) / 255.0
+
+def add_noise(x):
+    noise = np.random.normal(0, 0.5, x.shape)
+    return np.clip(x + noise, 0, 1)
+
+train_noisy = add_noise(x_train)
+test_noisy = add_noise(x_test)
+
+model = Sequential([
+    Input(shape=(784,)),
+    Dense(128, activation="relu"),
+    Dropout(0.2),
+    Dense(128, activation="relu"),
+    Dense(784, activation="sigmoid")
+])
+
+model.compile(optimizer="adam", loss="mse")
+
+model.fit(train_noisy, x_train, epochs=10, batch_size=256)
+
+model.evaluate(test_noisy, x_test)
+
+pred = model.predict(test_noisy[:10])
+
+plt.figure(figsize=(15, 5))
+
+for i in range(10):
+    plt.subplot(3, 10, i+1)
+    plt.imshow(x_test[i].reshape(28, 28), cmap="gray")
+    plt.title("Original")
+    plt.axis("off")
+
+    plt.subplot(3, 10, i+11)
+    plt.imshow(test_noisy[i].reshape(28, 28), cmap="gray")
+    plt.title("Noisy")
+    plt.axis("off")
+
+    plt.subplot(3, 10, i+21)
+    plt.imshow(pred[i].reshape(28, 28), cmap="gray")
+    plt.title("Denoised")
+    plt.axis("off")
+
+plt.tight_layout()
+plt.show()
