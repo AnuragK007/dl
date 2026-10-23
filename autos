@@ -1,0 +1,38 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from tensorflow.keras.datasets import mnist
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Input, Dense
+from tensorflow.keras.regularizers import l1
+
+(x_train, _), (x_test, _) = mnist.load_data()
+
+x_train = x_train.reshape(-1, 784) / 255
+x_test = x_test.reshape(-1, 784) / 255
+
+model = Sequential([
+    Input(shape=(784,)),
+    Dense(64, activation="relu", activity_regularizer=l1(0.001)),
+    Dense(784, activation="sigmoid")
+])
+
+model.compile(optimizer="adam", loss="mse")
+model.fit(x_train, x_train, epochs=5, batch_size=128)
+
+pred = model.predict(x_test[:5])
+
+plt.figure(figsize=(10, 4))
+
+for i in range(5):
+    plt.subplot(2, 5, i+1)
+    plt.imshow(x_test[i].reshape(28, 28), cmap="gray")
+    plt.title("Original")
+    plt.axis("off")
+
+    plt.subplot(2, 5, i+6)
+    plt.imshow(pred[i].reshape(28, 28), cmap="gray")
+    plt.title("Reconstructed")
+    plt.axis("off")
+
+plt.tight_layout()
+plt.show()
