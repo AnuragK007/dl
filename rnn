@@ -1,0 +1,41 @@
+import numpy as np
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Embedding, SimpleRNN, Dense
+
+text = open("book1.txt", encoding="utf-8").read().lower()
+
+chars = sorted(set(text))
+
+n = 20
+X, y = [], []
+
+for i in range(len(text)-n):
+
+    a = []
+    for c in text[i:i+n]:
+        a.append(ord(c))
+
+    X.append(a)
+    y.append(ord(text[i+n]))
+
+X = np.array(X)
+y = np.array(y)
+
+model = Sequential([
+    Embedding(len(chars), 32),
+    SimpleRNN(32),
+    Dense(len(chars), activation="softmax")
+])
+
+model.compile(optimizer="adam", loss="sparse_categorical_crossentropy")
+model.fit(X, y, epochs=5)
+
+generated = text[:20]
+
+for i in range(50):
+    x = np.array([[chars.index(c) for c in generated[-20:]]])
+    pred = model.predict(x, verbose=0)
+    generated += chars[np.argmax(pred)]
+
+print("Generated Text:")
+print(generated)
