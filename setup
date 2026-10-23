@@ -1,0 +1,10 @@
+
+conda --version
+
+conda create -n maka python=3.11 -y
+
+conda activate maka
+
+pip install ipykernel
+
+python -m ipykernel install --user --name maka --display-name py(maka)
