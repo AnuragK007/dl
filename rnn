@@ -13,7 +13,7 @@ for i in range(len(text)-n):
 
     a = []
     for c in text[i:i+n]:
-        a.append(ord(c))
+        a.append(ord(c)) #else chars.index(c)
 
     X.append(a)
     y.append(ord(text[i+n]))
