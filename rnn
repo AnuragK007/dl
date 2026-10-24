@@ -39,3 +39,21 @@ for i in range(50):
 
 print("Generated Text:")
 print(generated)
+
+
+
+seed = "Lorem Ipsum has".lower()
+
+for i in range(10):
+
+    a = [chars.index(c) for c in seed[-10:]]
+
+    a = np.array([a])
+
+    pred = model.predict(a, verbose=0)
+
+    nexchar = chars[np.argmax(pred[0])]
+
+    seed += nexchar
+
+print(seed)
